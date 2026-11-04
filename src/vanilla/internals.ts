@@ -844,10 +844,10 @@ const BUILDING_BLOCK_readAtomState: ReadAtomState = (
       storeHooks.c?.(atom)
     }
   }
+  atomState.m = storeEpochNumber
   if (mountedMap.has(atom)) {
     mountDependencies(buildingBlocks, store, atom)
   }
-  atomState.m = storeEpochNumber
   return atomState
 }
 
@@ -1007,6 +1007,9 @@ const BUILDING_BLOCK_mountAtom: MountAtom = (buildingBlocks, store, atom) => {
     mountedMap.set(atom, mounted)
     if (isActuallyWritableAtom(atom) && hasOnMount(atom)) {
       const processOnMount = () => {
+        if (mountedMap.get(atom) !== mounted) {
+          return
+        }
         let isSync = true
         const setAtom = (...args: unknown[]) => {
           try {
