@@ -746,10 +746,11 @@ const BUILDING_BLOCK_readAtomState: ReadAtomState = (
       atomState.d.delete(a)
     }
   }
-  const mountDependenciesIfAsync = () => {
+  const mountDependenciesIfMounted = () => {
     if (mountedMap.has(atom)) {
-      // If changedAtoms is already populated, an outer recompute cycle will handle it
-      const shouldRecompute = !changedAtoms.size
+      // In the sync phase, or if changedAtoms is already populated,
+      // an outer recompute cycle will handle it
+      const shouldRecompute = !isSync && !changedAtoms.size
       mountDependencies(buildingBlocks, store, atom)
       if (shouldRecompute) {
         recomputeInvalidatedAtoms(buildingBlocks, store)
@@ -784,7 +785,7 @@ const BUILDING_BLOCK_readAtomState: ReadAtomState = (
         mountedMap.get(a)?.t.add(atom)
       }
       if (!isSync) {
-        mountDependenciesIfAsync()
+        mountDependenciesIfMounted()
       }
     }
   }
@@ -822,7 +823,7 @@ const BUILDING_BLOCK_readAtomState: ReadAtomState = (
       )
       const settle = () => {
         pruneDependencies()
-        mountDependenciesIfAsync()
+        mountDependenciesIfMounted()
       }
       valueOrPromise.then(settle, settle)
     } else {
@@ -837,7 +838,6 @@ const BUILDING_BLOCK_readAtomState: ReadAtomState = (
     atomState.e = error
     ++atomState.n
   } finally {
-    isSync = false
     if (atomState.n !== prevEpochNumber && prevInvalidated) {
       invalidatedAtoms.set(atom, atomState.n)
       changedAtoms.add(atom)
@@ -845,9 +845,8 @@ const BUILDING_BLOCK_readAtomState: ReadAtomState = (
     }
   }
   atomState.m = storeEpochNumber
-  if (mountedMap.has(atom)) {
-    mountDependencies(buildingBlocks, store, atom)
-  }
+  mountDependenciesIfMounted()
+  isSync = false
   return atomState
 }
 
