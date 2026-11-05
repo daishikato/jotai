@@ -748,8 +748,7 @@ const BUILDING_BLOCK_readAtomState: ReadAtomState = (
   }
   const mountDependenciesIfMounted = () => {
     if (mountedMap.has(atom)) {
-      // In the sync phase, or if changedAtoms is already populated,
-      // an outer recompute cycle will handle it
+      // If changedAtoms is already populated, an outer recompute cycle will handle it
       const shouldRecompute = !isSync && !changedAtoms.size
       mountDependencies(buildingBlocks, store, atom)
       if (shouldRecompute) {
