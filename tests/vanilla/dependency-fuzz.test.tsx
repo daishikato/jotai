@@ -79,7 +79,7 @@ const run = (seed: number, steps: number) => {
   }
   const subs: { i: number; unsub: () => void }[] = []
   const check = (where: string) => {
-    expect(unflushedMounts.size, where).toBe(0)
+    expect(unflushedMounts.size, `${where}: unflushed mounts`).toBe(0)
     for (const [a, c] of counts) {
       const mounted = mountedMap.has(a) ? 1 : 0
       expect(c.m - c.u, `${where}: mount hooks`).toBe(mounted)
@@ -154,6 +154,6 @@ const run = (seed: number, steps: number) => {
 
 it('keeps values and mounted state consistent under random operations', () => {
   for (let seed = 1; seed <= 30; seed++) {
-    run(seed, 300)
+    expect(() => run(seed, 300)).not.toThrow()
   }
 })
