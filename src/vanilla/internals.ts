@@ -768,6 +768,7 @@ const BUILDING_BLOCK_readAtomState: ReadAtomState = (
       }
     }
     if (!hasChangedDeps) {
+      invalidatedAtoms.delete(atom)
       atomState.m = storeEpochNumber
       return atomState
     }
@@ -882,10 +883,12 @@ const BUILDING_BLOCK_readAtomState: ReadAtomState = (
   } finally {
     isSync = false
     if (atomState.n !== prevEpochNumber && prevInvalidated) {
-      invalidatedAtoms.set(atom, atomState.n)
       changedAtoms.add(atom)
       storeHooks.c?.(atom)
     }
+  }
+  if (prevInvalidated) {
+    invalidatedAtoms.delete(atom)
   }
   mountDependenciesIfChanged(false)
   return atomState
@@ -1102,6 +1105,7 @@ const BUILDING_BLOCK_unmountAtom: UnmountAtom = (
   atom,
 ) => {
   const mountedMap = buildingBlocks[KEY_mountedMap]
+  const invalidatedAtoms = buildingBlocks[KEY_invalidatedAtoms]
   const unflushedMounts = buildingBlocks[KEY_unflushedMounts]
   const ensureAtomState = buildingBlocks[KEY_ensureAtomState]
   const unmountAtom = buildingBlocks[KEY_unmountAtom]
@@ -1120,6 +1124,9 @@ const BUILDING_BLOCK_unmountAtom: UnmountAtom = (
   if (!isDependent) {
     // unmount self
     mountedMap.delete(atom)
+    if (!isPromiseLike(atomState.v)) {
+      invalidatedAtoms.delete(atom)
+    }
     // unmount dependencies
     for (const a of atomState.d.keys()) {
       const aMounted = unmountAtom(buildingBlocks, store, a)

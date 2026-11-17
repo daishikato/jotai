@@ -528,6 +528,67 @@ describe('dependency revision', () => {
 
     unsubscribe()
   })
+
+  it.each(['get', 'store.get'] as const)(
+    'reconciles mounted dependencies right after an eager read with %s',
+    (reader) => {
+      const store = INTERNAL_buildStore()
+      const mountedMap = INTERNAL_getBuildingBlocks(store)[KEY_mountedMap]
+      const sel = atom(false)
+      const a = atom(0)
+      const b = atom(1)
+      const derived = atom((get) => (get(sel) ? get(b) : get(a)))
+      const write = atom(null, (get, set) => {
+        const read = reader === 'get' ? get : store.get
+        set(sel, true)
+        expect(read(derived)).toBe(1)
+        expect(mountedMap.has(b)).toBe(true)
+        expect(mountedMap.has(a)).toBe(false)
+      })
+      store.sub(derived, () => {})
+      store.set(write)
+      expect(mountedMap.has(b)).toBe(true)
+      expect(mountedMap.has(a)).toBe(false)
+    },
+  )
+
+  it.each(['get', 'store.get'] as const)(
+    'does not notify a dependency removed and added back in a write with %s',
+    (reader) => {
+      const storeHooks = INTERNAL_initializeStoreHooks({})
+      const store = INTERNAL_buildStore({ [KEY_storeHooks]: storeHooks })
+      const sel = atom(false)
+      const a = atom(0)
+      const b = atom(1)
+      const mount = vi.fn()
+      const unmount = vi.fn()
+      const onMount = vi.fn()
+      const onUnmount = vi.fn()
+      storeHooks.m.add(a, mount)
+      storeHooks.u.add(a, unmount)
+      a.onMount = () => {
+        onMount()
+        return onUnmount
+      }
+      const derived = atom((get) => (get(sel) ? get(b) : get(a)))
+      const write = atom(null, (get, set) => {
+        const read = reader === 'get' ? get : store.get
+        set(sel, true)
+        expect(read(derived)).toBe(1)
+        set(sel, false)
+        expect(read(derived)).toBe(0)
+      })
+      const unsubscribe = store.sub(derived, () => {})
+      store.set(write)
+      expect(mount).toHaveBeenCalledOnce()
+      expect(unmount).not.toHaveBeenCalled()
+      expect(onMount).toHaveBeenCalledOnce()
+      expect(onUnmount).not.toHaveBeenCalled()
+      unsubscribe()
+      expect(unmount).toHaveBeenCalledOnce()
+      expect(onUnmount).toHaveBeenCalledOnce()
+    },
+  )
 })
 
 function isBuildingBlocks(blocks: object | undefined) {
