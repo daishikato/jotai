@@ -1023,6 +1023,7 @@ const BUILDING_BLOCK_mountAtom: MountAtom = (buildingBlocks, store, atom) => {
   const mountedMap = buildingBlocks[KEY_mountedMap]
   const mountCallbacks = buildingBlocks[KEY_mountCallbacks]
   const unflushedMounts = buildingBlocks[KEY_unflushedMounts]
+  const storeHooks = buildingBlocks[KEY_storeHooks]
   const atomOnMount = buildingBlocks[KEY_atomOnMount]
   const ensureAtomState = buildingBlocks[KEY_ensureAtomState]
   const flushCallbacks = buildingBlocks[KEY_flushCallbacks]
@@ -1058,7 +1059,11 @@ const BUILDING_BLOCK_mountAtom: MountAtom = (buildingBlocks, store, atom) => {
       t: new Set(),
     }
     mountedMap.set(atom, mounted)
-    if (!unflushedMounts.has(atom)) {
+    const hasOnMountCallback = isActuallyWritableAtom(atom) && hasOnMount(atom)
+    if (
+      (storeHooks.m || storeHooks.u || hasOnMountCallback) &&
+      !unflushedMounts.has(atom)
+    ) {
       unflushedMounts.set(atom, undefined)
     }
     if (isActuallyWritableAtom(atom) && hasOnMount(atom)) {
@@ -1107,6 +1112,7 @@ const BUILDING_BLOCK_unmountAtom: UnmountAtom = (
   const mountedMap = buildingBlocks[KEY_mountedMap]
   const invalidatedAtoms = buildingBlocks[KEY_invalidatedAtoms]
   const unflushedMounts = buildingBlocks[KEY_unflushedMounts]
+  const storeHooks = buildingBlocks[KEY_storeHooks]
   const ensureAtomState = buildingBlocks[KEY_ensureAtomState]
   const unmountAtom = buildingBlocks[KEY_unmountAtom]
   const atomState = ensureAtomState(buildingBlocks, store, atom)
@@ -1132,7 +1138,13 @@ const BUILDING_BLOCK_unmountAtom: UnmountAtom = (
       const aMounted = unmountAtom(buildingBlocks, store, a)
       aMounted?.t.delete(atom)
     }
-    if (!unflushedMounts.has(atom)) {
+    if (
+      (storeHooks.m ||
+        storeHooks.u ||
+        mounted.u ||
+        (isActuallyWritableAtom(atom) && hasOnMount(atom))) &&
+      !unflushedMounts.has(atom)
+    ) {
       unflushedMounts.set(atom, mounted)
     }
     return undefined
